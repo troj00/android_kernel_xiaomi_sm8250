@@ -142,6 +142,7 @@ obj-$(CONFIG_LZO_COMPRESS) += lzo/
 obj-$(CONFIG_LZO_DECOMPRESS) += lzo/
 obj-$(CONFIG_LZ4) += lz4/
 obj-$(CONFIG_LZ4HC) += lz4/
+obj-y += lz4k_oplus/
 obj-$(CONFIG_LZ4KD_COMPRESS) += lz4kd/
 obj-$(CONFIG_LZ4KD_DECOMPRESS) += lz4kd/
 obj-$(CONFIG_ZSTD_COMPRESS) += zstd/
