@@ -62,10 +62,10 @@ jobs:
       uses: actions/cache@v5
       with:
         path: ~/.cache/ccache_mikernel
-        key: ${{ runner.os }}-ccache-${{ inputs.device }}-${{ github.sha }}
+        key: ${{ runner.os }}-ccache-${{ github.event.inputs.device }}-${{ github.event.inputs.include_ksu }}-${{ steps.vars.outputs.sha }}
         restore-keys: |
-          ${{ runner.os }}-ccache-${{ inputs.device }}-${{ inputs.device }} nsu-
-          ${{ runner.os }}-${{ inputs.device }}-
+          ${{ runner.os }}-ccache-${{ github.event.inputs.device }}-${{ github.event.inputs.include_ksu }}-
+          ${{ runner.os }}-ccache-${{ github.event.inputs.device }}-
           ${{ runner.os }}-ccache-
 
     - name: Установка Toolchain (ZyC-Clang 15)
