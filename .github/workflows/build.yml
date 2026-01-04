@@ -93,7 +93,7 @@ jobs:
       uses: actions/upload-artifact@v6
       with:
         name: aosp_miui-${{ github.event.inputs.device }}${{ github.event.inputs.include_nsu == 'true' && '-nsu' || '' }}
-        files: |
+        path: |
           AOSP_*.zip
           MIUI_*.zip
         if-no-files-found: error
