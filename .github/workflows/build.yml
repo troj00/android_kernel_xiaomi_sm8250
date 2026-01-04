@@ -115,6 +115,5 @@ jobs:
         files: |
           AOSP_*.zip
           MIUI_*.zip
-        if-no-files-found: error
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
