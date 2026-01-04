@@ -1,12 +1,11 @@
-name: Build Kernel
-
+name: Сборка AOSP и MIUI для Xiaomi 10
 on:
   workflow_dispatch:
     inputs:
       device:
-        description: 'Target Device Codename (e.g., lmi, umi)'
+        description: 'Кодовое имя устройства (например: cmi, lmi, umi)'
         required: true
-        default: 'lmi'
+        default: 'umi'
         type: choice
         options:
           - psyche
@@ -21,70 +20,79 @@ on:
           - enuma
           - dagu
           - pipa
-      ksu:
-        description: 'Enable KernelSU (SukiSU & SUSFS)'
+      nsu:
+        description: 'Включить NextGenSU & SUSFS'
         required: true
         type: boolean
         default: true
 
 jobs:
   build:
-    name: Build Kernel for ${{ inputs.device }}
+    name: Сборка ядра для ${{ inputs.device }}
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Source
-      uses: actions/checkout@v4
+    - name: Проверка источников
+      uses: actions/checkout@v6
       with:
-        fetch-depth: 1 # 需要完整的 commit 历史来生成版本号
+        fetch-depth: 1 # Для генерации номера версии необходима полная история коммитов
 
-    - name: Cleanup Disk Space
-      # 内核编译不需要特别大的空间，但为了保险起见，清理一些预装软件
+    - name: Очистка дискового пространства
       run: |
         sudo rm -rf /usr/share/dotnet
         sudo rm -rf /opt/ghc
         sudo rm -rf "/usr/local/share/boost"
         sudo rm -rf "$AGENT_TOOLSDIRECTORY"
 
-    - name: Install Dependencies
-      # 对应 README 中的手动构建依赖
+    - name: Установка зависимостей
       run: |
         sudo apt-get update
         sudo apt-get install -y build-essential git curl wget bison flex zip bc cpio libssl-dev ccache python-is-python3
         sudo apt-get install -y gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi
 
-    - name: Setup Cache (ccache)
-      uses: actions/cache@v4
+    - name: Установка короткого коммита SHA
+      id: vars
+      run: |
+        echo "sha=$(echo $GITHUB_SHA | cut -c1-8)" >> $GITHUB_OUTPUT
+
+    - name: Настройка кеша (ccache)
+      uses: actions/cache@v5
       with:
         path: ~/.cache/ccache_mikernel
-        key: kernel-ccache-${{ inputs.device }}-${{ github.run_id }}
+        key: ${{ runner.os }}-ccache-${{ inputs.device }}-${{ github.sha }}
         restore-keys: |
-          kernel-ccache-${{ inputs.device }}-
-          kernel-ccache-
+          kernel-ccache
+          ${{ runner.os }}-ccache-${{ inputs.device }}-${{ inputs.device }} nsu-
+          ${{ runner.os }}-${{ inputs.device }}-
+          ${{ runner.os }}-ccache-
 
-    - name: Setup Toolchain (ZyC-Clang 15)
-      # 对应 Manual Build 第 2 步
+    - name: Установка Toolchain (ZyC-Clang 15)
       run: |
         mkdir -p $HOME/zyc-clang
         cd $HOME/zyc-clang
         wget -q https://github.com/ZyCromerZ/Clang/releases/download/15.0.7-20251111-release/Clang-15.0.7-20251111.tar.gz
         tar -zxvf Clang-15.0.7-20251111.tar.gz
 
-    - name: Build Kernel
+    - name: Сборка ядра
       run: |
         chmod +x build.sh
         
         if [ "${{ inputs.ksu }}" == "true" ]; then
-          echo "Building with KernelSU..."
-          bash build.sh ${{ inputs.device }} ksu
+          echo "Building with NextGenSU..."
+          bash build.sh ${{ inputs.device }} nsu
         else
-          echo "Building without KernelSU..."
+          echo "Building without NextGenSU..."
           bash build.sh ${{ inputs.device }}
         fi
 
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
+    - name: Выгрузка артефактов
+      uses: actions/upload-artifact@v6
       with:
-        name: Kernel-${{ inputs.device }}-${{ inputs.ksu && 'KSU' || 'NoKSU' }}-${{ github.run_number }}
-        path: ./*.zip
+        name: aosp_miui-${{ inputs.device }}-${{ inputs.ksu && 'NSU' || 'NoNSU' }}
+        path: ./
+          AOSP_*.zip
+          MIUI_*.zip
         if-no-files-found: error
+    
+    - name: Отображение структуры загруженных файлов
+      run: ls -R
