@@ -32,7 +32,7 @@ on:
 jobs:
   build:
     name: Сборка ядра для ${{ inputs.device }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
 
     steps:
     - name: Проверка источников
@@ -102,7 +102,7 @@ jobs:
       run: ls -R
 
     release:
-    runs-on: ubuntu-latest
+      runs-on: ubuntu-latest
     needs: build
     steps:
     - name: Загрузка всех артефактов сборки
