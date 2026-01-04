@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       device:
-        description: 'Кодовое имя устройства (например: cmi, lmi, umi)'
+        description: 'Выберите устройство'
         required: true
         default: 'umi'
         type: choice
@@ -20,11 +20,14 @@ on:
           - enuma
           - dagu
           - pipa
-      nsu:
-        description: 'Включить NextGenSU & SUSFS'
+      include_nsu:
+        description: 'Включить SU (NextGenSU & SUSFS) в сборку'
         required: true
-        type: boolean
-        default: true
+        default: 'true'
+        type: choice
+        options:
+          - 'true'
+          - 'false'
 
 jobs:
   build:
@@ -75,20 +78,19 @@ jobs:
 
     - name: Сборка ядра
       run: |
-        chmod +x build.sh
-        
-        if [ "${{ inputs.ksu }}" == "true" ]; then
-          echo "Building with NextGenSU..."
-          bash build.sh ${{ inputs.device }} nsu
+        if [ "${{ github.event.inputs.include_nsu }}" = "true" ]; then
+          bash build.sh ${{ github.event.inputs.device }} nsu
         else
-          echo "Building without NextGenSU..."
-          bash build.sh ${{ inputs.device }}
+          bash build.sh ${{ github.event.inputs.device }}
         fi
+
+    - name: Показать статистику кэширования
+      run: ccache -s
 
     - name: Выгрузка артефактов
       uses: actions/upload-artifact@v6
       with:
-        name: aosp_miui-${{ inputs.device }}-${{ inputs.ksu && 'NSU' || 'NoNSU' }}
+        name: aosp_miui-${{ github.event.inputs.device }}${{ github.event.inputs.include_nsu == 'true' && '-nsu' || '' }}
         path: ./
           AOSP_*.zip
           MIUI_*.zip
