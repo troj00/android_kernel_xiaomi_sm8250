@@ -11,12 +11,12 @@ TARGET_DEVICE=$1
 
 if [ -z "$1" ]; then
     echo "Error: No argument provided, please specific a target device." 
-    echo "If you need KernelSU, please add [ksu] as the second arg."
+    echo "If you need NextGenSU, please add [nsu] as the second arg."
     echo "Examples:"
-    echo "Build for lmi(K30 Pro/POCO F2 Pro) without KernelSU:"
-    echo "    bash build.sh lmi"
-    echo "Build for umi(Mi10) with KernelSU:"
-    echo "    bash build.sh umi ksu"
+    echo "Build for umi(Xiaomi Mi10) without NextGenSU:"
+    echo "    bash build.sh umi"
+    echo "Build for umi(Xiaomi Mi10) with NextGenSU:"
+    echo "    bash build.sh umi nsu"
     exit 1
 fi
 
@@ -82,22 +82,26 @@ clang --version
 
 
 
-KSU_ZIP_STR=NoKernelSU
-if [ "$2" == "ksu" ]; then
-    KSU_ENABLE=1
-    KSU_ZIP_STR=SukiSU-SUSFS
+NSU_ZIP_STR=NoNextGenSU
+if [ "$2" == "nsu" ]; then
+    NSU_ENABLE=1
+    NSU_ZIP_STR=NextGenSU-SUSFS
 else
-    KSU_ENABLE=0
+    NSU_ENABLE=0
 fi
 
 
 echo "TARGET_DEVICE: $TARGET_DEVICE"
 
-if [ $KSU_ENABLE -eq 1 ]; then
-    echo "KSU is enabled"
-    curl -LSs "https://raw.githubusercontent.com/ApartTUSITU/SukiSU-Ultra/main/kernel/setup.sh" | bash -s ApartTUSITU
+if [ $NSU_ENABLE -eq 1 ]; then
+    echo "NSU is enabled"
+    curl -LSs "https://raw.githubusercontent.com/troj00/NextGenSU/main/kernel/setup.sh" | bash -s tmp-builtin
+    echo "Implement Baseband-guard"
+    wget -O- wget -O- https://github.com/troj00/Baseband-guard/raw/main/setup.sh | bash
 else
-    echo "KSU is disabled"
+    echo "NSU is disabled"
+    echo "Implement Baseband-guard"
+    wget -O- wget -O- https://github.com/troj00/Baseband-guard/raw/main/setup.sh | bash
 fi
 
 
@@ -106,15 +110,22 @@ echo "Cleaning..."
 rm -rf out/
 rm -rf anykernel/
 
-echo "Clone AnyKernel3 for packing kernel (repo: https://github.com/liyafe1997/AnyKernel3)"
-git clone https://github.com/liyafe1997/AnyKernel3 -b kona --single-branch --depth=1 anykernel
+echo "Clone AnyKernel3 for packing kernel"
+git clone https://github.com/Nefarius80/AnyKernel3 -b kona --single-branch --depth=1 anykernel
+
+# Add date to local version
+local_version_str="-perf"
+local_version_date_str="-NextGenSU"
+
+# Restore local version string
+sed -i "s/${local_version_str}/${local_version_date_str}/g" arch/arm64/configs/${TARGET_DEVICE}_defconfig
 
 # ------------- Building for AOSP -------------
 
 echo "Building for AOSP......"
 make $MAKE_ARGS ${TARGET_DEVICE}_defconfig
 
-if [ $KSU_ENABLE -eq 1 ]; then
+if [ $NSU_ENABLE -eq 1 ]; then
     scripts/config --file out/.config \
     -e KSU \
     -e KSU_SUSFS \
@@ -128,7 +139,9 @@ if [ $KSU_ENABLE -eq 1 ]; then
     -e KSU_SUSFS_OPEN_REDIRECT \
     -e KSU_SUSFS_SUS_MAP \
     -e THREAD_INFO_IN_TASK \
-    -e KPM
+    -e KPM \
+    -e CPU_FREQ_DEFAULT_GOV_PERFORMANCE \
+    -e KSU_MULTI_MANAGER_SUPPORT
 else
     scripts/config --file out/.config -d KSU
 fi
@@ -150,8 +163,8 @@ rm -rf anykernel/kernels/
 
 mkdir -p anykernel/kernels/
 
-# Patch for SukiSU KPM support. 
-if [ $KSU_ENABLE -eq 1 ]; then
+# Patch for NextGenSU KPM support. 
+if [ $NSU_ENABLE -eq 1 ]; then
     cd out/arch/arm64/boot/
     wget https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.12.2/patch_linux
     chmod +x patch_linux
@@ -164,23 +177,24 @@ fi
 cp out/arch/arm64/boot/Image anykernel/kernels/
 cp out/arch/arm64/boot/dtb anykernel/kernels/
 
+echo "Build for AOSP finished."
+
+# Restore local version string
+sed -i "s/${local_version_date_str}/${local_version_str}/g" arch/arm64/configs/${TARGET_DEVICE}_defconfig
+
+# ------------- End of Building for AOSP -------------
+#  If you don't need AOSP you can comment out the above block [Building for AOSP]
+
 cd anykernel 
 
-ZIP_FILENAME=Kernel_AOSP_${TARGET_DEVICE}_${KSU_ZIP_STR}_$(date +'%Y%m%d_%H%M%S')_anykernel3_${GIT_COMMIT_ID}.zip
+ZIP_FILENAME=AOSP_${NSU_ZIP_STR}_${TARGET_DEVICE}_$(date +'%d_%m_%Y').zip
 
 zip -r9 $ZIP_FILENAME ./* -x .git .gitignore out/ ./*.zip
 
 mv $ZIP_FILENAME ../
 
 cd ..
-
-
-echo "Build for AOSP finished."
-
-# ------------- End of Building for AOSP -------------
-#  If you don't need AOSP you can comment out the above block [Building for AOSP]
-
-
+echo "Done. The flashable zip is: [./$ZIP_FILENAME]"
 # ------------- Building for MIUI -------------
 
 
@@ -248,7 +262,7 @@ sed -i 's/\/\/39 01 00 00 11 00 03 51 03 FF/39 01 00 00 11 00 03 51 03 FF/g' ${d
 
 make $MAKE_ARGS ${TARGET_DEVICE}_defconfig
 
-if [ $KSU_ENABLE -eq 1 ]; then
+if [ $NSU_ENABLE -eq 1 ]; then
     scripts/config --file out/.config \
     -e KSU \
     -e KSU_SUSFS \
@@ -262,7 +276,8 @@ if [ $KSU_ENABLE -eq 1 ]; then
     -e KSU_SUSFS_OPEN_REDIRECT \
     -e KSU_SUSFS_SUS_MAP \
     -e THREAD_INFO_IN_TASK \
-    -e KPM
+    -e KPM \
+    -e KSU_MULTI_MANAGER_SUPPORT
 else
     scripts/config --file out/.config -d KSU
 fi
@@ -270,6 +285,7 @@ fi
 
 scripts/config --file out/.config \
     --set-str STATIC_USERMODEHELPER_PATH /system/bin/micd \
+    -e CPU_FREQ_DEFAULT_GOV_PERFORMANCE \
     -e PERF_CRITICAL_RT_TASK	\
     -e SF_BINDER		\
     -e OVERLAY_FS		\
@@ -283,6 +299,7 @@ scripts/config --file out/.config \
     -e MILLET \
     -e PERF_HUMANTASK \
     -d LTO_CLANG \
+    -d LOCALVERSION_AUTO \
     -e SF_BINDER \
     -e XIAOMI_MIUI \
     -d MI_MEMORY_SYSFS \
@@ -318,8 +335,8 @@ mv .dts.bak ${dts_source}
 rm -rf anykernel/kernels/
 mkdir -p anykernel/kernels/
 
-# Patch for SukiSU KPM support. 
-if [ $KSU_ENABLE -eq 1 ]; then
+# Patch for NextGenSU KPM support. 
+if [ $NSU_ENABLE -eq 1 ]; then
     cd out/arch/arm64/boot/
     wget https://github.com/SukiSU-Ultra/SukiSU_KernelPatch_patch/releases/download/0.12.2/patch_linux
     chmod +x patch_linux
@@ -334,13 +351,16 @@ cp out/arch/arm64/boot/dtb anykernel/kernels/
 
 echo "Build for MIUI finished."
 
+# Restore local version string
+sed -i "s/${local_version_date_str}/${local_version_str}/g" arch/arm64/configs/${TARGET_DEVICE}_defconfig
+
 # ------------- End of Building for MIUI -------------
 #  If you don't need MIUI you can comment out the above block [Building for MIUI]
 
 
 cd anykernel 
 
-ZIP_FILENAME=Kernel_MIUI_${TARGET_DEVICE}_${KSU_ZIP_STR}_$(date +'%Y%m%d_%H%M%S')_anykernel3_${GIT_COMMIT_ID}.zip
+ZIP_FILENAME=MIUI_${NSU_ZIP_STR}_${TARGET_DEVICE}_$(date +'%d_%m_%Y').zip
 
 zip -r9 $ZIP_FILENAME ./* -x .git .gitignore out/ ./*.zip
 
