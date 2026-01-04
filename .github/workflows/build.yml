@@ -100,31 +100,21 @@ jobs:
     
     - name: Отображение структуры загруженных файлов
       run: ls -R
-
-    release:
-      runs-on: ubuntu-latest
-    needs: build
-    steps:
-    - name: Загрузка всех артефактов сборки
-      uses: actions/download-artifact@v6
-      with:
-        path: ./release_zips
-
-    - name: Отображение структуры загруженных файлов
-      run: ls -R
-
     - name: Установка текущей даты и короткого коммита SHA
-      id: vars
+      id: ids
       run: |
         echo "sha=$(echo $GITHUB_SHA | cut -c1-8)" >> $GITHUB_OUTPUT
         echo "date=$(date +'%d_%m_%Y')" >> $GITHUB_OUTPUT
 
-    - name: Создание релиза на GitHub
+    - name: Создать релиз на GitHub
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: Сборка-${{ steps.vars.outputs.date }}-${{ steps.vars.outputs.sha }}
-        name: "Сборка от ${{ steps.vars.outputs.date }}-${{ steps.vars.outputs.sha }}"
+        tag_name: Сборка-${{ steps.ids.outputs.date }}-${{ steps.ids.outputs.sha }}
+        name: "Сборка от ${{ steps.ids.outputs.date }}-${{ steps.ids.outputs.sha }}"
         body: "Автоматизированная сборка для коммита ${{ github.sha }}"
-        files: ./release_zips/**/*.zip
+        files: |
+          AOSP_*.zip
+          MIUI_*.zip
+        if-no-files-found: error
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
