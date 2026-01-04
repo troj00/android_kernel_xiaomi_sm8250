@@ -109,9 +109,9 @@ jobs:
     - name: Создать релиз на GitHub
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: Сборка-${{ steps.ids.outputs.date }}-${{ steps.ids.outputs.sha }}
-        name: "Сборка от ${{ steps.ids.outputs.date }}-${{ steps.ids.outputs.sha }}"
-        body: "Автоматизированная сборка для коммита ${{ github.sha }}"
+        tag_name: Сборка-${{ steps.ids.outputs.date }}
+        name: "Сборка от ${{ steps.ids.outputs.date }}"
+        body: "Автоматическая сборка для коммита ${{ github.sha }}"
         files: |
           AOSP_*.zip
           MIUI_*.zip
