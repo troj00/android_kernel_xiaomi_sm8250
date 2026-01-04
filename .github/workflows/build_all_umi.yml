@@ -1,0 +1,97 @@
+name: Сборка AOSP и MIUI ядер для Xiaomi 10
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        device: [umi]
+
+    steps:
+    - name: Проверка исходников
+      uses: actions/checkout@v6
+      with:
+        fetch-depth: 1
+
+    - name: Очистка дискового пространства
+      run: |
+        sudo rm -rf /usr/share/dotnet
+        sudo rm -rf /opt/ghc
+        sudo rm -rf "/usr/local/share/boost"
+        sudo rm -rf "$AGENT_TOOLSDIRECTORY"
+
+    - name: Установка зависимостей
+      run: |
+        sudo apt update
+        sudo apt install -y build-essential git curl wget bison flex zip bc cpio libssl-dev ccache python-is-python3 tar
+
+    - name: Установка короткого коммита SHA
+      id: vars
+      run: |
+        echo "sha=$(echo $GITHUB_SHA | cut -c1-8)" >> $GITHUB_OUTPUT
+
+    - name: Настройка Cache (ccache)
+      uses: actions/cache@v5
+      with:
+        path: ~/.cache/ccache_mikernel
+        key: ${{ runner.os }}-ccache-${{ matrix.device }}-${{ matrix.device }} nsu-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-ccache-${{ matrix.device }}-${{ matrix.device }} nsu-
+          ${{ runner.os }}-ccache-${{ matrix.device }}-
+          ${{ runner.os }}-ccache-
+
+    - name: Установка Toolchain (ZyC-Clang 15)
+      run: |
+        mkdir -p $HOME/zyc-clang
+        cd $HOME/zyc-clang
+        wget https://github.com/ZyCromerZ/Clang/releases/download/15.0.7-20251111-release/Clang-15.0.7-20251111.tar.gz
+        tar -zxvf Clang-15.0.7-20251111.tar.gz
+        cd $GITHUB_WORKSPACE
+
+    - name: Сборка ядер для ${{ matrix.device }} (без NSU)
+      run: |
+        bash build.sh ${{ matrix.device }}
+
+    - name: Сборка ядер для ${{ matrix.device }} (с NSU)
+      run: |
+        bash build.sh ${{ matrix.device }} nsu
+
+    - name: Выгрузить ZIP для ${{ matrix.device }}
+      uses: actions/upload-artifact@v6
+      with:
+        name: zips-${{ matrix.device }}
+        path: |
+          MIUI_*.zip
+          AOSP_*.zip
+
+  release:
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+    - name: Загрузка всех артефактов сборки
+      uses: actions/download-artifact@v6
+      with:
+        path: ./release_zips
+
+    - name: Отображение структуры загруженных файлов
+      run: ls -R
+
+    - name: Установка текущей даты и короткого коммита SHA
+      id: vars
+      run: |
+        echo "sha=$(echo $GITHUB_SHA | cut -c1-8)" >> $GITHUB_OUTPUT
+        echo "date=$(date +'%d_%m_%Y')" >> $GITHUB_OUTPUT
+
+    - name: Создать релиз на GitHub
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: Сборка-${{ steps.vars.outputs.date }}-${{ steps.vars.outputs.sha }}
+        name: "Сборка от ${{ steps.vars.outputs.date }}-${{ steps.vars.outputs.sha }}"
+        body: "Автоматизированная сборка для коммита ${{ github.sha }}"
+        files: ./release_zips/**/*.zip
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
