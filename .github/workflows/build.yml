@@ -109,8 +109,8 @@ jobs:
     - name: Создать релиз на GitHub
       uses: softprops/action-gh-release@v2
       with:
-        tag_name: сборка ядер AOSP & MIUI от ${{ steps.ids.outputs.date }}
-        name: "Сборка ядер AOSP & MIUI от ${{ steps.ids.outputs.date }}"
+        tag_name: сборка-${{ steps.ids.outputs.date }}
+        name: "Сборка от ${{ steps.ids.outputs.date }}"
         body: "Автоматическая сборка AOSP & MIUI ядер для коммита ${{ github.sha }}"
         files: |
           AOSP_*.zip
