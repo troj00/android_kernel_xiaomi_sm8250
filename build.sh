@@ -48,7 +48,7 @@ fi
 
 
 # Enable ccache for speed up compiling 
-export CCACHE_DIR="$HOME/.cache/ccache_mikernel" 
+export CCACHE_DIR="$HOME/.cache/ccache_nextgen" 
 export CC="ccache gcc"
 export CXX="ccache g++"
 export PATH="/usr/lib/ccache:$PATH"
