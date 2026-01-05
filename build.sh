@@ -95,7 +95,7 @@ echo "TARGET_DEVICE: $TARGET_DEVICE"
 
 if [ $NSU_ENABLE -eq 1 ]; then
     echo "NSU is enabled"
-    curl -LSs "https://raw.githubusercontent.com/troj00/NextGenSU/main/kernel/setup.sh" | bash -s tmp-builtin
+    curl -LSs "https://raw.githubusercontent.com/troj00/NextGenSU/main/kernel/setup.sh" | bash -s tmp-builtin-nextgen
     echo "Implement Baseband-guard"
     wget -O- https://github.com/vc-teahouse/Baseband-guard/raw/main/setup.sh | bash
 #    wget -O- https://github.com/troj00/Baseband-guard/raw/main/setup.sh | bash
