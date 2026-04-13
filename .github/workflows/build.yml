@@ -107,7 +107,7 @@ jobs:
         echo "date=$(date +'%d_%m_%Y')" >> $GITHUB_OUTPUT
 
     - name: Создать релиз на GitHub
-      uses: softprops/action-gh-release@v2
+      uses: softprops/action-gh-release@v3
       with:
         tag_name: сборка-${{ steps.ids.outputs.date }}
         name: "Сборка от ${{ steps.ids.outputs.date }}"
